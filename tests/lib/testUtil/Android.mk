@@ -14,15 +14,28 @@
 # limitations under the License.
 #
 
-LOCAL_PATH:= $(call my-dir)
+lib_LTLIBRARIES += \
+    %reldir%/libandroid-testutil.la
 
-include $(CLEAR_VARS)
-LOCAL_MODULE_TAGS := tests
-LOCAL_MODULE:= libtestUtil
-LOCAL_SRC_FILES:= testUtil.c
-LOCAL_C_INCLUDES += $(LOCAL_PATH)/../../include
-LOCAL_CFLAGS += -std=c99
-LOCAL_SHARED_LIBRARIES += libcutils libutils
+%canon_reldir%_libandroid_testutil_la_CPPFLAGS = \
+    $(AM_CPPFLAGS) \
+    $(LOG_CFLAGS) \
+    -I$(srcdir)/tests/include
 
+%canon_reldir%_libandroid_testutil_la_SOURCES = \
+    %reldir%/testUtil.c
 
-include $(BUILD_STATIC_LIBRARY)
+%canon_reldir%_libandroid_testutil_la_CFLAGS = \
+    $(AM_CFLAGS) \
+    -std=c99
+
+%canon_reldir%_libandroid_testutil_la_LDFLAGS = \
+    $(AM_LDFLAGS) \
+    $(libtool_opts)
+
+%canon_reldir%_libandroid_testutil_la_LIBADD = \
+    -lm \
+    $(LOG_LIBS)
+
+pkgconfig_DATA += \
+    %reldir%/android-testutil-$(LAARID_API_VERSION).pc

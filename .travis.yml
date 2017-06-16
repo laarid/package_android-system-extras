@@ -1,0 +1,104 @@
+dist: trusty
+sudo: required
+services:
+- docker
+language: cpp
+
+env:
+  matrix:
+  - JOB_ARCH=amd64
+  - JOB_ARCH=arm64
+  - JOB_ARCH=armel
+  - JOB_ARCH=armhf
+  - JOB_ARCH=i386
+  - JOB_ARCH=mips
+  - JOB_ARCH=mips64el
+  - JOB_ARCH=mipsel
+  - JOB_ARCH=ppc64el
+  - JOB_ARCH=s390x
+  global:
+  - DOCKER_EXEC_ROOT="sudo docker exec --interactive --tty --user root test_container"
+  - DOCKER_EXEC="sudo docker exec --interactive --tty test_container"
+  - DOCKER_EXEC_NOTTY="sudo docker exec test_container"
+  - BINTRAY_USER=laarid
+  - BINTRAY_REPO=main
+  - BINTRAY_COMPONENT=main
+  - BINTRAY_DESC="Android debugging/inspection tools"
+
+branches:
+  only:
+  - master
+  - release
+
+addons:
+  apt:
+    sources:
+    - sourceline: 'deb http://archive.ubuntu.com/ubuntu/ devel universe'
+    packages:
+    - binfmt-support
+    - qemu-user-static
+
+cache:
+- apt
+
+before_install:
+- |
+  sudo docker run --detach --interactive --tty \
+    --name test_container \
+    --volume ${TRAVIS_BUILD_DIR%${TRAVIS_REPO_SLUG}}:${TRAVIS_BUILD_DIR%${TRAVIS_REPO_SLUG}} \
+    --workdir ${TRAVIS_BUILD_DIR} \
+    --add-host dl.bintray.com:$(nslookup dl.bintray.com | grep -m1 -A1 Name: | grep Address: | awk '{print $2}') \
+    laarid/devel:${JOB_ARCH} \
+    /bin/bash
+
+install:
+- ${DOCKER_EXEC_ROOT} apt-get update -qq
+- |
+  ${DOCKER_EXEC_ROOT} \
+    mk-build-deps --install --remove \
+      --host-arch ${JOB_ARCH} \
+      --root-cmd sudo \
+      --tool 'apt-get -o Debug::pkgProblemResolver=yes --no-install-recommends -y --allow-unauthenticated'
+
+script:
+- |
+  ${DOCKER_EXEC} env \
+      "DEB_BUILD_OPTIONS=nocheck" \
+    dpkg-buildpackage \
+      --host-arch ${JOB_ARCH} \
+      --build-profiles=nocheck \
+      -i -us -uc -b;
+- ${DOCKER_EXEC} make -C build -j $(nproc) .gitignore distcheck
+- git status
+- git status | grep 'working tree clean'
+
+before_deploy:
+- |
+  cat debian/bintray.json.in | \
+    sed -e "s#@BINTRAY_PACKAGE@#$(cat debian/control | grep ^Source: | awk '{print $2}')#g" \
+        -e "s#@BINTRAY_USER@#${BINTRAY_USER}#g" \
+        -e "s#@BINTRAY_REPO@#${BINTRAY_REPO}#g" \
+        -e "s#@BINTRAY_DESC@#${BINTRAY_DESC}#g" \
+        -e "s#@GITHUB_REPO@#${TRAVIS_REPO_SLUG}#g" \
+        -e "s#@BINTRAY_VERSION@#$(cat debian/changelog | head -n 1 | sed 's,.*(\(.*\)).*,\1,')#g" \
+        -e "s#@BINTRAY_RELEASE_DATE@#$(cat debian/changelog | grep -m 1 '^ -- ' | sed 's,^.*  ,,')#g" \
+        -e "s#@BINTRAY_OUTDIR@#$(dirname ${TRAVIS_BUILD_DIR})#g" \
+        -e "s#@BINTRAY_POOLABBR@#$(cat debian/control | grep ^Source: | awk '{print $2}' | cut -c1)#g" \
+        -e "s#@BINTRAY_SUITE@#$(${DOCKER_EXEC_NOTTY} cat /etc/apt/sources.list | grep -m 1 '^deb ' | awk '{print $3}')#g" \
+        -e "s#@BINTRAY_COMPONENT@#${BINTRAY_COMPONENT}#g" \
+        -e "s#@BINTRAY_ARCH@#${JOB_ARCH}#g" | \
+    tee debian/bintray.json
+
+deploy:
+- provider: bintray
+  file: debian/bintray.json
+  user: vicamo
+  key:
+    secure: "P1FziVdL3CNeoKdWSTXGyo1oujtkoo+MYAXb9HCz135tCbcIqneMoKeu8Jy8vWSnoQrd1NPLob9PAy4pKxbXjKxkNrYmdK9EDyOENEaBBc3F4gHh4IgeAC53LSZbhnC3ZBncrcH1O75Jve+H5S6NPg/UWilVt4uDRX5mSBxES7DhcZmv5jTgVoxrW90T+E2oeT6zz9SJgU/v7uR/v40yOGYuA+QqSq5waibu81QAvzS5HuON+a0vnFAsZgfZynvYnwjl6OQ92YxZRBXeLufH7W+s5g68OZf2FO+BG3N+KtC5hTfIDKZtQbQwN98iDqpv0mJiegVGmjztl3iulIPr0wMsRgQlNbDDyFeesWzPk/lDkHzpP2jpM++EXpvg76JRtkz15Q3Mpctmf0j6FT8XSleTz6EAntz4z+BsT/SxIp6fE5p1goTcxuis75Q4pPqrLyYxpSH8Ki4MJJSAqBMI9O7/LNThi0a2l1Sz/4z0zVUfrzafZKiZ5lzw4M1OY5hVqUWDX9/LMmsFYrJQ5CwjMtflsghh3AoQncLcu0162QlJm/RewRU05Pl4zEu+HItu2GE9a5XRYvOJVrkj/Wa1Pl+KJORmDpyDR2slrF9DBFKSOAd3iqE82wNIgTIPKD/8h5ZI8+4fjRcKK/MssUlasc/VxtY24JiYVcuvdGDQcGI="
+  on:
+    branch: release
+
+notifications:
+  slack:
+    rooms:
+    - secure: "TJ1CGuPSWu5tMyJvXCGIlU8mYcKtoWRh+dwnPETbGTB7w7cuQ16VMTPralztslIS0t6JeuErnj4N/yfS8WUPC36lbn3FE+ERBrsjLa5rhEy2O0P5AVto+9a+423BcXOFNWlXvc+1BWcclnyWgaqKb8N65nERBL615GbqN0b9VNoYyf5JbXJ/+EuswOhClEpnojZnLLoGJRuFZ5SMU/QzZ9Xe/VkJz5r070O1diFwF/iudj4upr2UweYyKIB79/q2VqxuxaQGzE+TOGOEMoow1RPyzw+dijQ/BuB/mNd92wv1ZhFuJXSlGkcWy0rdQXlqU0y79Aqm5r+AriN+QuKRH1zY6mbwmGsEuZ1VhDLDDSXonah94vEG472RYMhqTWJRXqM6IWNTujz/nrC/sq7HBWmvhPI1pUhcKVgrfVuSzOmJT/rHib/rFhZGJwvBM58vKTDtOhEObaywdYTiSvIJNVpZs/1WCHRG+Tp9Ku/Rl/VsjepueYe8rHtsTsDQ9hHVyvm/LBDgdcFtiJMGZzYkjwJLXY3g0QRsd35A9QWzUmDLmoHSjueokK53wh3M4sL+zygvdHx+eRS8noo5Nyt/Wv9AvVs1OLaQ3Tlc929eqK4vD42iOQRmgf6shRnsMfI3dni/ZGY24xAv+bB25g3WibAvpOxJD1nrzSJ1hKlJh3E="

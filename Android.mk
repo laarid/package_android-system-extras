@@ -14,4 +14,4 @@
 # limitations under the License.
 #
 
-include $(all-subdir-makefiles)
+include $(srcdir)/tests/Android.mk

@@ -30,7 +30,7 @@
 #include <sys/time.h>
 #include <sys/wait.h>
 
-#include <cutils/log.h>
+#include <log/log.h>
 
 #define ALEN(a) (sizeof(a) / sizeof(a [0]))  // Array length
 typedef unsigned int bool_t;
@@ -394,7 +394,6 @@ testXDumpGetOffset(void)
 void testExecCmd(const char *cmd)
 {
     FILE *fp;
-    int rv;
     int status;
     char str[MAXSTR];
 

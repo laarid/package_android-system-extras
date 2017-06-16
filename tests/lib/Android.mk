@@ -14,5 +14,4 @@
 # limitations under the License.
 #
 
-LOCAL_PATH:= $(call my-dir)
-include $(call all-subdir-makefiles)
+include %reldir%/testUtil/Android.mk

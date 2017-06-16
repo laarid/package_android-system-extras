@@ -1,0 +1,4 @@
+usr/include/android/system-extras-*/testUtil.h
+usr/lib/*/libandroid-testutil.a
+usr/lib/*/libandroid-testutil.so
+usr/lib/*/pkgconfig/android-testutil-0.0.pc

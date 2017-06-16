@@ -1,0 +1,43 @@
+Source: android-system-extras
+Priority: extra
+Maintainer: You-Sheng Yang <vicamo@gmail.com>
+Build-Depends:
+ debhelper (>= 9),
+ dh-autoreconf,
+ autoconf-archive,
+ pkg-config (>= 0.24),
+ libandroid-log0-dev (>= 0.0.20),
+Standards-Version: 3.9.5
+Section: libs
+Homepage: https://github.com/laarid/package_android-system-extras
+Vcs-Git: https://github.com/laarid/package_android-system-extras.git
+Vcs-Browser: https://github.com/laarid/package_android-system-extras
+
+Package: libandroid-testutil0-dev
+Priority: extra
+Section: libdevel
+Architecture: any
+Multi-Arch: same
+Depends:
+ libandroid-testutil0 (= ${binary:Version}),
+ libandroid-log0-dev (>= 0.0.20),
+ ${misc:Depends},
+Description: Android libtestUtil - development
+ This package contains libtestUtil built from Android
+ platform/system/extras.
+ .
+ This package contains the development files.
+
+Package: libandroid-testutil0
+Priority: extra
+Section: libs
+Architecture: any
+Multi-Arch: same
+Pre-Depends:
+ ${misc:Pre-Depends},
+Depends:
+ ${shlibs:Depends},
+ ${misc:Depends},
+Description: Android libtestUtil
+ This package contains libtestUtil built from Android
+ platform/system/extras.
